@@ -1,0 +1,22 @@
+install.packages("sparklyr")
+library(sparklyr)
+spark_install(version = "2.1.0")
+devtools::install_github("rstudio/sparklyr")
+
+library(dplyr)
+sc <- spark_connect(master = "local")
+iris_tbl <- sdf_copy_to(sc, iris, name = "iris_tbl", overwrite = TRUE)
+
+partitions <- iris_tbl %>%
+ sdf_partition(training = 0.7, test = 0.3, seed = 1111)
+
+iris_training <- partitions$training
+iris_test <- partitions$test
+
+rf_model <- iris_training %>%
+ ml_random_forest(Species ~ ., type = "classification")
+
+pred <- sdf_predict(iris_test, rf_model)
+
+ml_multiclass_classification_evaluator(pred)
+
